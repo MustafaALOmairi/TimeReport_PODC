@@ -15,9 +15,13 @@ function toast(msg, err) {
 }
 
 async function api(action, { type = 'time', params = {}, body = null } = {}) {
+  const cfg = window.TR_CONFIG || {};
+  if (cfg.SUPABASE_URL && cfg.SUPABASE_KEY) return sbApi(action, { type, params, body }); // static hosting (GitHub Pages)
   const qs = new URLSearchParams({ action, type, ...params });
-  const res = await fetch(API + '?' + qs, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
-  let j; try { j = await res.json(); } catch { throw new Error('Invalid server response'); }
+  let res;
+  try { res = await fetch(API + '?' + qs, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}); }
+  catch { throw new Error('Cannot reach the server. Is PHP running, or set up Supabase in config.js?'); }
+  let j; try { j = await res.json(); } catch { throw new Error('No backend found: this host cannot run PHP. Fill in SUPABASE_URL and SUPABASE_KEY in config.js'); }
   if (!j.ok) throw new Error(j.error || 'Request failed');
   return j;
 }

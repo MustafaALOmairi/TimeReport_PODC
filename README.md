@@ -24,3 +24,11 @@ Paperless shift reporting: PHP + MySQL backend, single-page web frontend.
 ## Notes
 - No login yet: add authentication before exposing to a network.
 - Export libraries load from cdnjs; download them locally for offline use.
+
+## Hosting on GitHub Pages (Supabase backend)
+GitHub Pages cannot run PHP/MySQL, so use Supabase (free) for storage:
+1. Create a project at supabase.com.
+2. SQL Editor → paste `supabase.sql` → Run.
+3. Project Settings → API: copy the Project URL and the anon/publishable key.
+4. Put them in `config.js` (`SUPABASE_URL`, `SUPABASE_KEY`), commit and push.
+The anon key is meant to be public, but the SQL policies allow anyone with the site link to read/write. Add login before real use.
