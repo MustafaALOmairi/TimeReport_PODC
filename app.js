@@ -82,15 +82,18 @@ function shiftSelect(v) {
     ${['Day', 'Night'].map(s => `<option ${v === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
 }
 
+/* hide editing controls (.xh) in exported image / PDF */
+const hideForExport = d => d.querySelectorAll(".xh").forEach(e => e.style.setProperty("display", "none", "important"));
+
 async function exportImage(name) {
   const el = document.getElementById('sheet');
-  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#fff' });
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#fff", onclone: hideForExport });
   const a = document.createElement('a');
   a.download = name + '.png'; a.href = canvas.toDataURL('image/png'); a.click();
 }
 async function exportPDF(name) {
   const el = document.getElementById('sheet');
-  const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#fff' });
+  const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#fff", onclone: hideForExport });
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('p', 'mm', 'a4');
   const w = 190, h = canvas.height * w / canvas.width, maxH = 277;
@@ -157,16 +160,16 @@ function renderTime(ro) {
       <td><input type="time" class="inp e" value="${hhmm(a.end_time)}"></td>
       <td><input class="inp q" value="${esc(a.qty)}"></td>
       <td><input class="inp u" value="${esc(a.what_we_use)}"></td>
-      <td style="text-align:center"><button class="del big" data-del-act="${i}" title="Remove">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
+      <td class="xh" style="text-align:center"><button class="del big" data-del-act="${i}" title="Remove">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
   const eqRows = t.equipment.map((e, i) => `<tr data-i="${i}">
       <td><input class="inp eq" value="${esc(e.equipment)}"></td>
       <td><input class="inp op" value="${esc(e.operator)}"></td>
       <td><input type="time" class="inp s" value="${hhmm(e.start_time)}"></td>
       <td><input type="time" class="inp e" value="${hhmm(e.end_time)}"></td>
-      <td style="text-align:center"><button class="del big" data-del-eq="${i}" title="Remove">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
+      <td class="xh" style="text-align:center"><button class="del big" data-del-eq="${i}" title="Remove">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
   const people = k => `<td style="vertical-align:top"><div class="people"><div class="row" id="mp-${k}">
-      ${t.manpower[k].map((b, i) => `<span class="person"><input class="inp" value="${esc(b)}"><button class="del" data-del-p="${k}:${i}">${ICON.trash.replace('<svg', '<svg width="10" height="10"')}</button></span>`).join('')}
-      </div><button class="padd" data-add-p="${k}">+</button></div></td>`;
+      ${t.manpower[k].map((b, i) => `<span class="person"><input class="inp" value="${esc(b)}"><button class="del xh" data-del-p="${k}:${i}">${ICON.trash.replace('<svg', '<svg width="10" height="10"')}</button></span>`).join('')}
+      </div><button class="padd xh" data-add-p="${k}">+</button></div></td>`;
 
   $app.innerHTML = `<div class="wrap ${ro ? 'readonly' : ''}">
     ${backBtn()}
@@ -186,10 +189,10 @@ function renderTime(ro) {
       </table>
       <div class="gap"></div>
       <div class="box">
-        <table class="t" id="acts"><colgroup><col style="width:26%"><col style="width:26%"><col style="width:16%"><col><col style="width:48px"></colgroup>
-          <tr><th>Start Time</th><th>End Time</th><th>No</th><th>What We Use</th><th>Actions</th></tr>${actRows}</table>
-        <div style="padding:5px"><button class="add" id="addAct">+ Add Work Activity</button></div>
-        <div class="hours">Total working time: <b id="hrs">${calcHours()}</b></div>
+        <table class="t" id="acts"><colgroup><col style="width:26%"><col style="width:26%"><col style="width:16%"><col><col class="xh" style="width:48px"></colgroup>
+          <tr><th>Start Time</th><th>End Time</th><th>No</th><th>What We Use</th><th class="xh">Actions</th></tr>${actRows}</table>
+        <div class="xh" style="padding:5px"><button class="add" id="addAct">+ Add Work Activity</button></div>
+        <div class="hours xh">Total working time: <b id="hrs">${calcHours()}</b></div>
       </div>
       <div class="gap"></div>
       <div class="box"><table class="t"><tr><th>What We Do</th></tr></table>
@@ -199,9 +202,9 @@ function renderTime(ro) {
         <tr>${people('FOREMAN')}${people('TALLYMAN')}${people('DOCKER')}</tr></table></div>
       <div class="gap"></div>
       <div class="box">
-        <table class="t" id="eqs"><colgroup><col style="width:24%"><col style="width:24%"><col style="width:22%"><col style="width:22%"><col style="width:48px"></colgroup>
-          <tr><th>Equipment</th><th>Operator 1</th><th>Start</th><th>End</th><th>Actions</th></tr>${eqRows}</table>
-        <div style="padding:5px"><button class="add" id="addEq">+ Add Equipment</button></div>
+        <table class="t" id="eqs"><colgroup><col style="width:24%"><col style="width:24%"><col style="width:22%"><col style="width:22%"><col class="xh" style="width:48px"></colgroup>
+          <tr><th>Equipment</th><th>Operator 1</th><th>Start</th><th>End</th><th class="xh">Actions</th></tr>${eqRows}</table>
+        <div class="xh" style="padding:5px"><button class="add" id="addEq">+ Add Equipment</button></div>
       </div>
     </div>
     <div class="actions noprint">
@@ -258,7 +261,7 @@ function renderDischarge(ro) {
     <td><input class="inp n" value="${esc(it.item_no)}"></td><td><input class="inp d" value="${esc(it.description)}"></td>
     <td><input class="inp q" value="${esc(it.qty)}"></td><td><input class="inp u" value="${esc(it.unit)}"></td>
     <td><input class="inp l" value="${esc(it.location)}"></td><td><input class="inp r" value="${esc(it.remarks)}"></td>
-    <td style="text-align:center"><button class="del big" data-del="${i}">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
+    <td class="xh" style="text-align:center"><button class="del big" data-del="${i}">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
   $app.innerHTML = `<div class="wrap ${ro ? 'readonly' : ''}">${backBtn()}
     <div class="sheet wide" id="sheet">
       <div class="title">DISCHARGE LIST</div>
@@ -270,9 +273,9 @@ function renderDischarge(ro) {
         <tr><td><input class="inp" id="berth" value="${esc(d.berth)}"></td><td><input class="inp" id="yard" value="${esc(d.yard_no)}"></td></tr></table>
       <div class="gap"></div>
       <div class="box"><table class="t" id="items">
-        <colgroup><col style="width:15%"><col style="width:26%"><col style="width:9%"><col style="width:9%"><col style="width:14%"><col><col style="width:48px"></colgroup>
-        <tr><th>Item / Cont. No</th><th>Description</th><th>Qty</th><th>Unit</th><th>Location</th><th>Remarks</th><th>Actions</th></tr>${rows}</table>
-        <div style="padding:5px"><button class="add" id="addItem">+ Add Item</button></div></div>
+        <colgroup><col style="width:15%"><col style="width:26%"><col style="width:9%"><col style="width:9%"><col style="width:14%"><col><col class="xh" style="width:48px"></colgroup>
+        <tr><th>Item / Cont. No</th><th>Description</th><th>Qty</th><th>Unit</th><th>Location</th><th>Remarks</th><th class="xh">Actions</th></tr>${rows}</table>
+        <div class="xh" style="padding:5px"><button class="add" id="addItem">+ Add Item</button></div></div>
       <div class="gap"></div>
       <div class="box"><table class="t"><tr><th>Remarks</th></tr></table>
         <div style="padding:10px"><textarea class="inp" id="rem">${esc(d.remarks)}</textarea></div></div>
@@ -331,7 +334,7 @@ async function searchView(tab) {
       </div>
     </div>
     <div class="results"><div class="rhead">${tab === 'time' ? 'Time Reports' : 'Discharge Lists'} <small id="cnt"></small></div>
-      <div class="scroll"><table class="r"><thead><tr><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th>Actions</th></tr></thead>
+      <div class="scroll"><table class="r"><thead><tr><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th class="xh">Actions</th></tr></thead>
       <tbody id="rows"></tbody></table></div></div></div>`;
 
   const ids = ['q', 'from', 'to', 'shift', 'yard', 'berth'];
