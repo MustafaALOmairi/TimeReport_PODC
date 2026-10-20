@@ -121,6 +121,21 @@ table.r td .acts{display:flex;gap:6px;flex-wrap:wrap}
   table.t th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
+/* logo inside report header (top-left) */
+.sheet .title{position:relative}
+.title-logo{position:absolute;left:14px;top:50%;transform:translateY(-50%);height:40px;width:auto}
+@media (max-width:560px){.sheet .title{font-size:16px}.title-logo{height:24px;left:6px}}
+
+/* multi-select + static PDF sheets */
+.chk{width:17px;height:17px;accent-color:#f97316;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.val{padding:7px 8px;font-size:12px;text-align:center;min-height:30px;word-break:break-word}
+.val.left{text-align:left}
+.vtop{vertical-align:top}
+.chips{padding:4px;min-height:30px}
+.chips span{display:inline-block;border:1px solid #d1d5db;border-radius:3px;padding:2px 8px;margin:2px;font-size:12px}
+.what{padding:10px;font-size:12px;white-space:pre-wrap;min-height:90px;word-break:break-word}
+
 /* ---------- Login ---------- */
 .hero .logout{margin-left:auto;align-self:flex-start}
 .login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:#fff}

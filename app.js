@@ -46,6 +46,12 @@ const LOGO_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAiQAAACQCAYAAAA4
 const LOGO = `<img src="${LOGO_SRC}" alt="Port of Duqm">`;
 
 /* ---------------- router ---------------- */
+/* standard drop-down suggestions (users can still type any value) */
+const BERTHS = ['110','120','130','140','150','160','170','180','190','FB-200','FB-210','FB-220','ODC'];
+const YARDS = ['Admin Gate','Gate IN','Gate OUT','Port Security','Yard-DB','Yard-BB','Yard-RORO','Yard-CT','Yard-CFS','Yard-Navy','Washing Area','Wood yard','Warehouse'];
+const DL_BERTH = `<datalist id="berthList">${BERTHS.map(v => `<option value="${v}">`).join('')}</datalist>`;
+const DL_YARD = `<datalist id="yardList">${YARDS.map(v => `<option value="${v}">`).join('')}</datalist>`;
+
 /* ---------------- LOGIN (front-end gate only) ---------------- */
 // SHA-256 of "user:password". NOTE: this only hides the screens; it is not real security on a static site.
 const AUTH_HASH = 'b7ca74a3887c7e80097015b34cad38cdc0ef856428c033c8c46f890b8646468b';
@@ -212,7 +218,7 @@ function renderTime(ro) {
   $app.innerHTML = `<div class="wrap ${ro ? 'readonly' : ''}">
     ${backBtn()}
     <div class="sheet" id="sheet">
-      <div class="title">TIME REPORT</div>
+      <div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT</div>
       <div class="gap" style="height:0"></div>
       <table class="t" style="margin-top:0">
         <tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
@@ -222,8 +228,8 @@ function renderTime(ro) {
       <table class="t" style="margin-top:-1px">
         <colgroup><col style="width:25%"><col style="width:25%"><col style="width:50%"></colgroup>
         <tr><th>Berth</th><th>Bollard</th><th>Yard No</th></tr>
-        <tr><td><input class="inp" id="berth" value="${esc(t.berth)}"></td><td><input class="inp" id="bollard" value="${esc(t.bollard)}"></td>
-            <td><input class="inp" id="yard" value="${esc(t.yard_no)}"></td></tr>
+        <tr><td><input class="inp" id="berth" list="berthList" value="${esc(t.berth)}">${DL_BERTH}</td><td><input class="inp" id="bollard" value="${esc(t.bollard)}"></td>
+            <td><input class="inp" id="yard" list="yardList" value="${esc(t.yard_no)}">${DL_YARD}</td></tr>
       </table>
       <div class="gap"></div>
       <div class="box">
@@ -302,13 +308,13 @@ function renderDischarge(ro) {
     <td class="xh" style="text-align:center"><button class="del big" data-del="${i}">${ICON.trash.replace('<svg', '<svg width="12" height="12"')}</button></td></tr>`).join('');
   $app.innerHTML = `<div class="wrap ${ro ? 'readonly' : ''}">${backBtn()}
     <div class="sheet wide" id="sheet">
-      <div class="title">DISCHARGE LIST</div>
+      <div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">DISCHARGE LIST</div>
       <table class="t"><tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
         <tr><td><input class="inp" id="mv" value="${esc(d.mv)}"></td><td><input class="inp" id="voy" value="${esc(d.voy)}"></td>
         <td><input type="date" class="inp" id="date" value="${d.list_date}"></td><td>${shiftSelect(d.shift)}</td></tr></table>
       <table class="t" style="margin-top:-1px"><colgroup><col style="width:25%"><col style="width:75%"></colgroup>
         <tr><th>Berth</th><th>Yard No</th></tr>
-        <tr><td><input class="inp" id="berth" value="${esc(d.berth)}"></td><td><input class="inp" id="yard" value="${esc(d.yard_no)}"></td></tr></table>
+        <tr><td><input class="inp" id="berth" list="berthList" value="${esc(d.berth)}">${DL_BERTH}</td><td><input class="inp" id="yard" list="yardList" value="${esc(d.yard_no)}">${DL_YARD}</td></tr></table>
       <div class="gap"></div>
       <div class="box"><table class="t" id="items">
         <colgroup><col style="width:15%"><col style="width:26%"><col style="width:9%"><col style="width:9%"><col style="width:14%"><col><col class="xh" style="width:48px"></colgroup>
@@ -340,11 +346,86 @@ function renderDischarge(ro) {
   $('#pdf').onclick = () => { pullD(); exportPDF(fname('Discharge', D.mv, D.list_date)); };
 }
 
+/* ---------------- MULTI-REPORT PDF ---------------- */
+const vcell = (v, left) => `<div class="val${left ? ' left' : ''}">${esc(v) || '&nbsp;'}</div>`;
+
+function staticTimeSheet(r) {
+  const acts = (r.activities || []).filter(a => a.start_time || a.end_time || a.qty || a.what_we_use);
+  const eqs = (r.equipment || []).filter(e => e.equipment || e.operator || e.start_time || e.end_time);
+  if (!acts.length) acts.push({});
+  if (!eqs.length) eqs.push({});
+  const mp = r.manpower || {};
+  const people = k => `<td class="vtop"><div class="chips">${(mp[k] || []).filter(Boolean).map(b => `<span>${esc(b)}</span>`).join('') || '&nbsp;'}</div></td>`;
+  return `<div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT</div>
+    <table class="t"><tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
+      <tr><td>${vcell(r.mv)}</td><td>${vcell(r.voy)}</td><td>${vcell(fmtDate(r.report_date))}</td><td>${vcell(r.shift)}</td></tr></table>
+    <table class="t" style="margin-top:-1px"><colgroup><col style="width:25%"><col style="width:25%"><col style="width:50%"></colgroup>
+      <tr><th>Berth</th><th>Bollard</th><th>Yard No</th></tr>
+      <tr><td>${vcell(r.berth)}</td><td>${vcell(r.bollard)}</td><td>${vcell(r.yard_no)}</td></tr></table>
+    <div class="gap"></div>
+    <table class="t"><colgroup><col style="width:22%"><col style="width:22%"><col style="width:16%"><col></colgroup>
+      <tr><th>Start Time</th><th>End Time</th><th>No</th><th>What We Use</th></tr>
+      ${acts.map(a => `<tr><td>${vcell(hhmm(a.start_time))}</td><td>${vcell(hhmm(a.end_time))}</td><td>${vcell(a.qty)}</td><td>${vcell(a.what_we_use)}</td></tr>`).join('')}</table>
+    <div class="gap"></div>
+    <table class="t"><tr><th>What We Do</th></tr><tr><td><div class="what">${esc(r.what_we_do)}</div></td></tr></table>
+    <div class="gap"></div>
+    <table class="t"><tr><th>FOREMAN</th><th>TALLYMAN</th><th>DOCKER</th></tr>
+      <tr>${people('FOREMAN')}${people('TALLYMAN')}${people('DOCKER')}</tr></table>
+    <div class="gap"></div>
+    <table class="t"><colgroup><col style="width:30%"><col style="width:30%"><col style="width:20%"><col style="width:20%"></colgroup>
+      <tr><th>Equipment</th><th>Operator 1</th><th>Start</th><th>End</th></tr>
+      ${eqs.map(e => `<tr><td>${vcell(e.equipment)}</td><td>${vcell(e.operator)}</td><td>${vcell(hhmm(e.start_time))}</td><td>${vcell(hhmm(e.end_time))}</td></tr>`).join('')}</table>`;
+}
+
+function staticDischargeSheet(r) {
+  const items = (r.items || []).filter(nonEmptyObj);
+  if (!items.length) items.push({});
+  return `<div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">DISCHARGE LIST</div>
+    <table class="t"><tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
+      <tr><td>${vcell(r.mv)}</td><td>${vcell(r.voy)}</td><td>${vcell(fmtDate(r.list_date))}</td><td>${vcell(r.shift)}</td></tr></table>
+    <table class="t" style="margin-top:-1px"><colgroup><col style="width:25%"><col style="width:75%"></colgroup>
+      <tr><th>Berth</th><th>Yard No</th></tr><tr><td>${vcell(r.berth)}</td><td>${vcell(r.yard_no)}</td></tr></table>
+    <div class="gap"></div>
+    <table class="t"><colgroup><col style="width:16%"><col style="width:28%"><col style="width:10%"><col style="width:10%"><col style="width:14%"><col></colgroup>
+      <tr><th>Item / Cont. No</th><th>Description</th><th>Qty</th><th>Unit</th><th>Location</th><th>Remarks</th></tr>
+      ${items.map(i => `<tr><td>${vcell(i.item_no)}</td><td>${vcell(i.description)}</td><td>${vcell(i.qty)}</td><td>${vcell(i.unit)}</td><td>${vcell(i.location)}</td><td>${vcell(i.remarks)}</td></tr>`).join('')}</table>
+    <div class="gap"></div>
+    <table class="t"><tr><th>Remarks</th></tr><tr><td><div class="what">${esc(r.remarks)}</div></td></tr></table>`;
+}
+const nonEmptyObj = o => Object.values(o).some(v => String(v ?? '').trim() !== '');
+
+/* one PDF, one report per A4 page */
+async function exportMany(tab, items) {
+  items.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || (+a.id) - (+b.id));
+  const btn = document.getElementById('dlPdf'), lbl = btn.querySelector('span');
+  const old = lbl.textContent; btn.disabled = true;
+  const host = document.createElement('div');
+  host.style.cssText = `position:fixed;left:-10000px;top:0;width:${tab === 'time' ? 700 : 900}px;background:#fff`;
+  document.body.appendChild(host);
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    for (let i = 0; i < items.length; i++) {
+      lbl.textContent = `Preparing ${i + 1}/${items.length}…`;
+      const row = (await api('get', { type: tab, params: { id: items[i].id } })).row;
+      host.innerHTML = `<div class="sheet" style="max-width:none;margin:0;padding:6px;background:#fff">${tab === 'time' ? staticTimeSheet(row) : staticDischargeSheet(row)}</div>`;
+      const canvas = await html2canvas(host.firstElementChild, { scale: 2, backgroundColor: '#fff' });
+      if (i) pdf.addPage();
+      const w = 190, h = canvas.height * w / canvas.width, k = h > 277 ? 277 / h : 1;
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 10 + (190 - w * k) / 2, 10, w * k, h * k);
+    }
+    const names = new Set(items.map(x => x.mv));
+    pdf.save(fname(tab === 'time' ? 'TimeReports' : 'DischargeLists', names.size === 1 ? items[0].mv : 'Multiple', today()) + '.pdf');
+    toast(`PDF ready (${items.length} reports)`);
+  } catch (e) { toast(e.message, true); }
+  finally { host.remove(); lbl.textContent = old; btn.disabled = false; }
+}
+
 /* ---------------- ADVANCED SEARCH ---------------- */
 const S = { tab: 'time', showFilters: true, q: '', from: '', to: '', shift: '', yard: '', berth: '' };
 
 async function searchView(tab) {
-  S.tab = tab;
+  S.tab = tab; S.sel = new Map(); // selected reports: id -> {mv, date}
   let meta = { time: 0, discharge: 0, berths: [], yards: [] };
   try { meta = await api('meta'); } catch (e) { toast(e.message, true); }
   const opt = (arr, cur, all) => `<option value="">${all}</option>` + arr.map(v => `<option ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
@@ -366,13 +447,14 @@ async function searchView(tab) {
           <div><label>Date From</label><input type="date" id="from" value="${S.from}"></div>
           <div><label>Date To</label><input type="date" id="to" value="${S.to}"></div>
           <div><label>Shift Type</label><select id="shift">${opt(['Day', 'Night'], S.shift, 'All Shifts')}</select></div>
-          <div><label>Yard No</label><select id="yard">${opt(meta.yards, S.yard, 'All Locations')}</select></div>
-          <div><label>Berth</label><select id="berth">${opt(meta.berths, S.berth, 'All Berths')}</select></div>
+          <div><label>Yard No</label><select id="yard">${opt([...new Set([...YARDS, ...meta.yards])], S.yard, 'All Locations')}</select></div>
+          <div><label>Berth</label><select id="berth">${opt([...new Set([...BERTHS, ...meta.berths])], S.berth, 'All Berths')}</select></div>
         </div>
       </div>
     </div>
-    <div class="results"><div class="rhead">${tab === 'time' ? 'Time Reports' : 'Discharge Lists'} <small id="cnt"></small></div>
-      <div class="scroll"><table class="r"><thead><tr><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th class="xh">Actions</th></tr></thead>
+    <div class="results"><div class="rhead">${tab === 'time' ? 'Time Reports' : 'Discharge Lists'} <small id="cnt"></small>
+      <button class="btn blue" id="dlPdf" disabled style="margin-left:auto">${ICON.pdf}<span>Download PDF (0)</span></button></div>
+      <div class="scroll"><table class="r"><thead><tr><th style="width:38px"><input type="checkbox" id="selAll" class="chk" title="Select all"></th><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th class="xh">Actions</th></tr></thead>
       <tbody id="rows"></tbody></table></div></div></div>`;
 
   const ids = ['q', 'from', 'to', 'shift', 'yard', 'berth'];
@@ -380,6 +462,7 @@ async function searchView(tab) {
   const refresh = () => { ids.forEach(i => S[i] = document.getElementById(i).value); clearTimeout(timer); timer = setTimeout(load, 200); };
   ids.forEach(i => document.getElementById(i).addEventListener(i === 'q' ? 'input' : 'change', refresh));
   document.getElementById('tg').onclick = () => { S.showFilters = !S.showFilters; document.getElementById('flt').style.display = S.showFilters ? 'block' : 'none'; document.getElementById('tg').textContent = S.showFilters ? 'Hide Filters' : 'Show Filters'; };
+  document.getElementById('dlPdf').onclick = () => exportMany(tab, [...S.sel].map(([id, v]) => ({ id, ...v })));
   load();
 
   async function load() {
@@ -389,6 +472,7 @@ async function searchView(tab) {
       const rows = (await api('list', { type: tab, params })).rows;
       document.getElementById('cnt').textContent = `(${rows.length} results)`;
       tb.innerHTML = rows.length ? rows.map(r => `<tr>
+        <td><input type="checkbox" class="chk" data-sel="${r.id}" ${S.sel.has(String(r.id)) ? 'checked' : ''}></td>
         <td>${fmtDate(r.the_date)}</td><td><b>${esc(r.mv)}</b></td><td>${esc(r.voy)}</td>
         <td>${r.shift ? `<span class="pill ${r.shift === 'Day' ? 'day' : ''}">${esc(r.shift)}</span>` : '-'}</td>
         <td class="berth">${esc(r.berth) || '-'}</td><td>${esc(r.yard_no) || '-'}</td>
@@ -397,7 +481,17 @@ async function searchView(tab) {
           <button class="btn sm" onclick="go('${tab}/${r.id}')">${ICON.edit} Edit</button>
           ${tab === 'time' ? `<button class="btn sm pams ${+r.pams_done ? '' : 'off'}" data-pams="${r.id}">${ICON.check} PAMS Done</button>` : ''}
           <button class="btn sm red" data-del="${r.id}">${ICON.trash}</button>
-        </div></td></tr>`).join('') : '<tr><td colspan="7" class="empty">No results</td></tr>';
+        </div></td></tr>`).join('') : '<tr><td colspan="8" class="empty">No results</td></tr>';
+      const upd = () => {
+        const n = S.sel.size, b = document.getElementById('dlPdf');
+        if (b.dataset.busy) return;
+        b.disabled = !n; b.querySelector('span').textContent = `Download PDF (${n})`;
+        document.getElementById('selAll').checked = rows.length > 0 && rows.every(r => S.sel.has(String(r.id)));
+      };
+      const pick = (r, on) => on ? S.sel.set(String(r.id), { mv: r.mv, date: r.the_date }) : S.sel.delete(String(r.id));
+      tb.querySelectorAll('[data-sel]').forEach(c => c.onchange = () => { pick(rows.find(x => String(x.id) === c.dataset.sel), c.checked); upd(); });
+      document.getElementById('selAll').onchange = e => { rows.forEach(r => pick(r, e.target.checked)); tb.querySelectorAll('[data-sel]').forEach(c => c.checked = e.target.checked); upd(); };
+      upd();
       tb.querySelectorAll('[data-pams]').forEach(b => b.onclick = async () => {
         try { const r = await api('pams', { body: { id: +b.dataset.pams } }); b.classList.toggle('off', !r.pams_done); toast(r.pams_done ? 'Marked as PAMS done' : 'PAMS mark removed'); } catch (e) { toast(e.message, true); }
       });
@@ -405,7 +499,7 @@ async function searchView(tab) {
         if (!confirm('Delete this record permanently?')) return;
         try { await api('delete', { type: tab, body: { id: +b.dataset.del } }); toast('Deleted'); searchView(tab); } catch (e) { toast(e.message, true); }
       });
-    } catch (e) { tb.innerHTML = `<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`; }
+    } catch (e) { tb.innerHTML = `<tr><td colspan="8" class="empty">${esc(e.message)}</td></tr>`; }
   }
 }
 
