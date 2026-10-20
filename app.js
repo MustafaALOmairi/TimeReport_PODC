@@ -45,7 +45,44 @@ const ICON = {
 const LOGO = '<img src="assets/logo.png" alt="Port of Duqm" onerror="this.style.display=\'none\'">';
 
 /* ---------------- router ---------------- */
+/* ---------------- LOGIN (front-end gate only) ---------------- */
+// SHA-256 of "user:password". NOTE: this only hides the screens; it is not real security on a static site.
+const AUTH_HASH = 'b7ca74a3887c7e80097015b34cad38cdc0ef856428c033c8c46f890b8646468b';
+const isAuthed = () => { try { return sessionStorage.getItem('tr_auth') === '1'; } catch { return false; } };
+const setAuthed = v => { try { v ? sessionStorage.setItem('tr_auth', '1') : sessionStorage.removeItem('tr_auth'); } catch {} };
+async function sha256(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function logout() { setAuthed(false); location.hash = '#/'; route(); }
+
+function loginView() {
+  $app.innerHTML = `<div class="login-wrap">
+    <form class="login-card" id="lf" autocomplete="on">
+      <img src="assets/logo.png" alt="Port of Duqm" class="login-logo" onerror="this.style.display='none'">
+      <h1>TIME REPORT</h1>
+      <p class="login-sub">Sign in to continue</p>
+      <label for="lu">User</label>
+      <input id="lu" class="login-inp" name="username" autocomplete="username" inputmode="numeric" autofocus>
+      <label for="lp">Password</label>
+      <input id="lp" class="login-inp" type="password" name="password" autocomplete="current-password">
+      <div class="login-err" id="le" role="alert"></div>
+      <button class="login-btn" type="submit">Sign in</button>
+    </form></div>`;
+  document.getElementById('lf').addEventListener('submit', async e => {
+    e.preventDefault();
+    const u = document.getElementById('lu').value.trim(), p = document.getElementById('lp').value;
+    const err = document.getElementById('le');
+    try {
+      if (await sha256(u + ':' + p) === AUTH_HASH) { setAuthed(true); route(); return; }
+      err.textContent = 'Incorrect user or password';
+      document.getElementById('lp').value = ''; document.getElementById('lp').focus();
+    } catch { err.textContent = 'Sign-in needs a secure (https) page'; }
+  });
+}
+
 function route() {
+  if (!isAuthed()) return loginView();
   const [page, a, b] = (location.hash.replace('#/', '') || 'home').split('/');
   if (page === 'new') return formTime(null, false);
   if (page === 'time' && a) return formTime(+a, b === 'view');
@@ -60,7 +97,7 @@ const go = h => { location.hash = '#/' + h; };
 /* ---------------- HOME ---------------- */
 function home() {
   $app.innerHTML = `<div class="wrap">
-    <div class="hero">${LOGO}<h1>TIME REPORT</h1></div>
+    <div class="hero">${LOGO}<h1>TIME REPORT</h1><button class="btn sm logout" onclick="logout()">Sign out</button></div>
     <div class="cards">
       <button class="card c-green" onclick="go('new')">
         <div class="top"><div class="ic">${ICON.plus}</div><div><h3>New Report</h3><p>Create shift report</p></div></div>
