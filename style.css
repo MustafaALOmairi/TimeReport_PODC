@@ -57,10 +57,10 @@ textarea.inp{border-radius:4px;min-height:120px;resize:vertical;font-size:12px}
 .del{border:0;background:var(--red);color:#fff;border-radius:3px;width:18px;height:18px;font-size:11px;line-height:1;padding:0;flex:none}
 .del.big{width:24px;height:22px}
 .people{padding:6px;display:flex;flex-direction:column;gap:6px}
-.person{display:flex;align-items:center;gap:2px}
-.person .inp{border-radius:3px;padding:4px;width:38px;text-align:center;font-size:11px}
-.people .row{display:flex;flex-wrap:wrap;gap:3px}
-.padd{width:100%;background:var(--orange);border:1px solid #000;border-radius:5px;padding:4px;font-size:12px}
+.person{display:flex;align-items:center;gap:3px;min-width:0}
+.person .inp{flex:1;min-width:0;width:auto;height:36px;border-radius:5px;padding:4px 6px;text-align:center;font-size:14px}
+.people .row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.padd{width:100%;background:var(--orange);border:1px solid #000;border-radius:5px;padding:6px;font-size:13px}
 .hours{font-size:11px;color:var(--muted);padding:4px 8px;text-align:right}
 .actions{display:flex;gap:10px;justify-content:center;margin:20px 0 40px;flex-wrap:wrap}
 .actions .btn{padding:8px 16px}

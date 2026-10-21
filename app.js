@@ -154,7 +154,7 @@ function blankTime() {
   return {
     id: 0, mv: '', voy: '', report_date: today(), shift: '', berth: '', bollard: '', yard_no: '', what_we_do: '',
     activities: [{}, {}], equipment: [{}, {}],
-    manpower: { FOREMAN: ['', '', ''], TALLYMAN: ['', '', ''], DOCKER: ['', '', ''] },
+    manpower: { FOREMAN: ['', ''], TALLYMAN: ['', ''], DOCKER: ['', ''] },
   };
 }
 
@@ -265,7 +265,7 @@ function renderTime(ro) {
   $('#addEq')?.addEventListener('click', () => { pullTime(); T.equipment.push({}); renderTime(ro); });
   document.querySelectorAll('[data-del-act]').forEach(b => b.onclick = () => { pullTime(); T.activities.splice(+b.dataset.delAct, 1); if (!T.activities.length) T.activities.push({}); renderTime(ro); });
   document.querySelectorAll('[data-del-eq]').forEach(b => b.onclick = () => { pullTime(); T.equipment.splice(+b.dataset.delEq, 1); if (!T.equipment.length) T.equipment.push({}); renderTime(ro); });
-  document.querySelectorAll('[data-add-p]').forEach(b => b.onclick = () => { pullTime(); T.manpower[b.dataset.addP].push(''); renderTime(ro); });
+  document.querySelectorAll('[data-add-p]').forEach(b => b.onclick = () => { pullTime(); T.manpower[b.dataset.addP].push('', ''); renderTime(ro); });
   document.querySelectorAll('[data-del-p]').forEach(b => b.onclick = () => { pullTime(); const [k, i] = b.dataset.delP.split(':'); T.manpower[k].splice(+i, 1); if (!T.manpower[k].length) T.manpower[k].push(''); renderTime(ro); });
   document.querySelectorAll('#acts input[type=time]').forEach(i => i.addEventListener('change', () => { pullTime(); $('#hrs').textContent = calcHours(); }));
 
