@@ -22,6 +22,7 @@ async function sbFetch(path, { method = 'GET', body, prefer } = {}) {
   }
   if (!res.ok) {
     let m = ''; try { m = (await res.json()).message; } catch {}
+    if (/row-level security|permission denied/i.test(m)) m = 'You do not have permission for this action';
     throw new Error(m || 'Supabase error ' + res.status);
   }
   return res;
@@ -106,12 +107,14 @@ async function sbApi(action, { type = 'time', params = {}, body = null } = {}) {
     const id = +body.id;
     const cur = (await (await sbFetch(`time_reports?id=eq.${id}&select=pams_done`)).json())[0];
     if (!cur) throw new Error('Not found');
-    await sbFetch(`time_reports?id=eq.${id}`, { method: 'PATCH', body: { pams_done: !cur.pams_done } });
+    const upd = await (await sbFetch(`time_reports?id=eq.${id}`, { method: 'PATCH', body: { pams_done: !cur.pams_done }, prefer: 'return=representation' })).json();
+    if (!upd.length) throw new Error('You do not have permission to change PAMS status');
     return { ok: true, pams_done: cur.pams_done ? 0 : 1 };
   }
 
   if (action === 'delete') {
-    await sbFetch(`${tbl}?id=eq.${+body.id}`, { method: 'DELETE' });
+    const del = await (await sbFetch(`${tbl}?id=eq.${+body.id}`, { method: 'DELETE', prefer: 'return=representation' })).json();
+    if (!del.length) throw new Error('You do not have permission to delete this record');
     return { ok: true };
   }
 

@@ -55,6 +55,11 @@ const DL_YARD = `<datalist id="yardList">${YARDS.map(v => `<option value="${v}">
 /* ---------------- LOGIN (front-end gate only) ---------------- */
 // SHA-256 of "user:password". NOTE: this only hides the screens; it is not real security on a static site.
 const AUTH_HASH = 'b7ca74a3887c7e80097015b34cad38cdc0ef856428c033c8c46f890b8646468b';
+/* permissions (set at sign-in from the database; PHP/MySQL mode allows everything) */
+const PERM_DEFAULT = { new_report: true, new_discharge: true, search: true, edit: true, pams: true, delete: false, export: true };
+const getPerms = () => { try { return JSON.parse(sessionStorage.getItem('tr_perms') || 'null') || {}; } catch { return {}; } };
+const setPerms = p => { try { p ? sessionStorage.setItem('tr_perms', JSON.stringify(p)) : sessionStorage.removeItem('tr_perms'); } catch {} };
+const can = k => !usingSb() || ({ ...PERM_DEFAULT, ...getPerms() })[k] !== false;
 const isAuthed = () => { try { return sessionStorage.getItem('tr_auth') === '1'; } catch { return false; } };
 const setAuthed = v => { try { v ? sessionStorage.setItem('tr_auth', '1') : sessionStorage.removeItem('tr_auth'); } catch {} };
 async function sha256(s) {
@@ -65,6 +70,7 @@ const usingSb = () => !!(window.TR_CONFIG && window.TR_CONFIG.SUPABASE_URL && wi
 async function logout() {
   try { if (usingSb()) await sbRpc('logout'); } catch {}
   try { sessionStorage.removeItem('tr_token'); sessionStorage.removeItem('tr_name'); } catch {}
+  setPerms(null);
   setAuthed(false); location.hash = '#/'; route();
 }
 
@@ -90,7 +96,7 @@ function loginView() {
       let ok = false;
       if (usingSb()) { // users are managed in the database (users.sql)
         const r = await sbRpc('login', { p_user: u, p_pass: p });
-        if (r && r.ok) { try { sessionStorage.setItem('tr_token', r.token); sessionStorage.setItem('tr_name', r.name || u); } catch {} ok = true; }
+        if (r && r.ok) { try { sessionStorage.setItem('tr_token', r.token); sessionStorage.setItem('tr_name', r.name || u); } catch {} setPerms(r.perms); ok = true; }
       } else ok = await sha256(u + ':' + p) === AUTH_HASH;
       if (ok) { setAuthed(true); route(); return; }
       err.textContent = 'Incorrect user or password';
@@ -103,11 +109,12 @@ function loginView() {
 function route() {
   if (!isAuthed()) return loginView();
   const [page, a, b] = (location.hash.replace('#/', '') || 'home').split('/');
-  if (page === 'new') return formTime(null, false);
-  if (page === 'time' && a) return formTime(+a, b === 'view');
-  if (page === 'discharge-new') return formDischarge(null, false);
-  if (page === 'discharge' && a) return formDischarge(+a, b === 'view');
-  if (page === 'search') return searchView(a === 'discharge' ? 'discharge' : 'time');
+  const deny = () => { toast('You do not have permission for this page', true); location.hash = '#/'; };
+  if (page === 'new') return can('new_report') ? formTime(null, false) : deny();
+  if (page === 'time' && a) return b !== 'view' && !can('edit') ? (location.hash = `#/time/${a}/view`) : formTime(+a, b === 'view');
+  if (page === 'discharge-new') return can('new_discharge') ? formDischarge(null, false) : deny();
+  if (page === 'discharge' && a) return b !== 'view' && !can('edit') ? (location.hash = `#/discharge/${a}/view`) : formDischarge(+a, b === 'view');
+  if (page === 'search') return can('search') ? searchView(a === 'discharge' ? 'discharge' : 'time') : deny();
   return home();
 }
 window.addEventListener('hashchange', route);
@@ -118,15 +125,15 @@ function home() {
   $app.innerHTML = `<div class="wrap">
     <div class="hero">${LOGO}<h1>TIME REPORT</h1><span class="hero-btns"><button class="btn sm" onclick="logout()">Sign out</button></span></div>
     <div class="cards">
-      <button class="card c-green" onclick="go('new')">
+      <button class="card c-green" ${can('new_report') ? `onclick="go('new')"` : 'disabled'}>
         <div class="top"><div class="ic">${ICON.plus}</div><div><h3>New Report</h3><p>Create shift report</p></div></div>
-        <div class="cta"><b>Create</b><span>New Entry</span></div></button>
-      <button class="card c-purple" onclick="go('discharge-new')">
+        <div class="cta"><b>Create</b><span>${can('new_report') ? 'New Entry' : 'Not allowed'}</span></div></button>
+      <button class="card c-purple" ${can('new_discharge') ? `onclick="go('discharge-new')"` : 'disabled'}>
         <div class="top"><div class="ic">${ICON.list}</div><div><h3>Discharge List</h3><p>Create discharge list</p></div></div>
-        <div class="cta"><b>Create</b><span>New Entry</span></div></button>
-      <button class="card c-blue" onclick="go('search')">
+        <div class="cta"><b>Create</b><span>${can('new_discharge') ? 'New Entry' : 'Not allowed'}</span></div></button>
+      <button class="card c-blue" ${can('search') ? `onclick="go('search')"` : 'disabled'}>
         <div class="top"><div class="ic">${ICON.search}</div><div><h3>Search Reports</h3><p>Find historical data</p></div></div>
-        <div class="cta"><b>Search</b><span>Advanced Filters</span></div></button>
+        <div class="cta"><b>Search</b><span>${can('search') ? 'Advanced Filters' : 'Not allowed'}</span></div></button>
     </div></div>`;
 }
 
@@ -264,7 +271,7 @@ function renderTime(ro) {
       </div>
     </div>
     <div class="actions noprint">
-      ${ro ? `<button class="btn orange" onclick="go('time/${t.id}')">${ICON.edit} Edit</button>` : `<button class="btn green" id="save">${ICON.save} Save Report</button>`}
+      ${ro ? (can('edit') ? `<button class="btn orange" onclick="go('time/${t.id}')">${ICON.edit} Edit</button>` : '') : `<button class="btn green" id="save">${ICON.save} Save Report</button>`}
       <button class="btn blue" id="img">${ICON.img} Export Image</button>
       <button class="btn blue" id="pdf">${ICON.pdf} Export PDF</button>
       <button class="btn gray" onclick="window.print()">${ICON.print} Print</button>
@@ -337,7 +344,7 @@ function renderDischarge(ro) {
         <div style="padding:10px"><textarea class="inp" id="rem">${esc(d.remarks)}</textarea></div></div>
     </div>
     <div class="actions noprint">
-      ${ro ? `<button class="btn orange" onclick="go('discharge/${d.id}')">${ICON.edit} Edit</button>` : `<button class="btn green" id="save">${ICON.save} Save List</button>`}
+      ${ro ? (can('edit') ? `<button class="btn orange" onclick="go('discharge/${d.id}')">${ICON.edit} Edit</button>` : '') : `<button class="btn green" id="save">${ICON.save} Save List</button>`}
       <button class="btn blue" id="img">${ICON.img} Export Image</button>
       <button class="btn blue" id="pdf">${ICON.pdf} Export PDF</button>
       <button class="btn gray" onclick="window.print()">${ICON.print} Print</button>
@@ -465,8 +472,8 @@ async function searchView(tab) {
       </div>
     </div>
     <div class="results"><div class="rhead">${tab === 'time' ? 'Time Reports' : 'Discharge Lists'} <small id="cnt"></small>
-      <button class="btn blue" id="dlPdf" disabled style="margin-left:auto">${ICON.pdf}<span>Download PDF (0)</span></button></div>
-      <div class="scroll"><table class="r"><thead><tr><th style="width:38px"><input type="checkbox" id="selAll" class="chk" title="Select all"></th><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th class="xh">Actions</th></tr></thead>
+      <button class="btn blue ${can('export') ? '' : 'perm-hide'}" id="dlPdf" disabled style="margin-left:auto">${ICON.pdf}<span>Download PDF (0)</span></button></div>
+      <div class="scroll"><table class="r"><thead><tr><th class="${can('export') ? '' : 'perm-hide'}" style="width:38px"><input type="checkbox" id="selAll" class="chk" title="Select all"></th><th>Date</th><th>Vessel</th><th>Voyage</th><th>Shift</th><th>Berth</th><th>Yard</th><th class="xh">Actions</th></tr></thead>
       <tbody id="rows"></tbody></table></div></div></div>`;
 
   const ids = ['q', 'from', 'to', 'shift', 'yard', 'berth'];
@@ -484,15 +491,15 @@ async function searchView(tab) {
       const rows = (await api('list', { type: tab, params })).rows;
       document.getElementById('cnt').textContent = `(${rows.length} results)`;
       tb.innerHTML = rows.length ? rows.map(r => `<tr>
-        <td><input type="checkbox" class="chk" data-sel="${r.id}" ${S.sel.has(String(r.id)) ? 'checked' : ''}></td>
+        <td class="${can('export') ? '' : 'perm-hide'}"><input type="checkbox" class="chk" data-sel="${r.id}" ${S.sel.has(String(r.id)) ? 'checked' : ''}></td>
         <td>${fmtDate(r.the_date)}</td><td><b>${esc(r.mv)}</b></td><td>${esc(r.voy)}</td>
         <td>${r.shift ? `<span class="pill ${r.shift === 'Day' ? 'day' : ''}">${esc(r.shift)}</span>` : '-'}</td>
         <td class="berth">${esc(r.berth) || '-'}</td><td>${esc(r.yard_no) || '-'}</td>
         <td><div class="acts">
           <button class="btn sm view" onclick="go('${tab}/${r.id}/view')">${ICON.eye} View</button>
-          <button class="btn sm" onclick="go('${tab}/${r.id}')">${ICON.edit} Edit</button>
-          ${tab === 'time' ? `<button class="btn sm pams ${+r.pams_done ? '' : 'off'}" data-pams="${r.id}">${ICON.check} PAMS Done</button>` : ''}
-          <button class="btn sm red" data-del="${r.id}">${ICON.trash}</button>
+          ${can('edit') ? `<button class="btn sm" onclick="go('${tab}/${r.id}')">${ICON.edit} Edit</button>` : ''}
+          ${tab === 'time' && can('pams') ? `<button class="btn sm pams ${+r.pams_done ? '' : 'off'}" data-pams="${r.id}">${ICON.check} PAMS Done</button>` : ''}
+          ${can('delete') ? `<button class="btn sm red" data-del="${r.id}">${ICON.trash}</button>` : ''}
         </div></td></tr>`).join('') : '<tr><td colspan="8" class="empty">No results</td></tr>';
       const upd = () => {
         const n = S.sel.size, b = document.getElementById('dlPdf');
@@ -518,7 +525,11 @@ async function searchView(tab) {
 // on load: if a saved session is no longer valid in the database, ask for sign-in again
 (async () => {
   if (isAuthed() && usingSb()) {
-    try { if (await sbRpc('is_valid_session') === false) return logout(); } catch {}
+    try {
+      const me = await sbRpc('whoami');
+      if (me && me.ok === false) return logout();
+      if (me && me.ok) setPerms(me.perms || null);   // pick up changes made by the admin
+    } catch {}
   }
   route();
 })();
