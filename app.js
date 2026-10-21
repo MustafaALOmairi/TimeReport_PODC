@@ -61,7 +61,12 @@ async function sha256(s) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
-function logout() { setAuthed(false); location.hash = '#/'; route(); }
+const usingSb = () => !!(window.TR_CONFIG && window.TR_CONFIG.SUPABASE_URL && window.TR_CONFIG.SUPABASE_KEY);
+async function logout() {
+  try { if (usingSb()) await sbRpc('logout'); } catch {}
+  try { sessionStorage.removeItem('tr_token'); sessionStorage.removeItem('tr_name'); } catch {}
+  setAuthed(false); location.hash = '#/'; route();
+}
 
 function loginView() {
   $app.innerHTML = `<div class="login-wrap">
@@ -80,11 +85,18 @@ function loginView() {
     e.preventDefault();
     const u = document.getElementById('lu').value.trim(), p = document.getElementById('lp').value;
     const err = document.getElementById('le');
+    const btn = e.target.querySelector('button'); btn.disabled = true; err.textContent = '';
     try {
-      if (await sha256(u + ':' + p) === AUTH_HASH) { setAuthed(true); route(); return; }
+      let ok = false;
+      if (usingSb()) { // users are managed in the database (users.sql)
+        const r = await sbRpc('login', { p_user: u, p_pass: p });
+        if (r && r.ok) { try { sessionStorage.setItem('tr_token', r.token); sessionStorage.setItem('tr_name', r.name || u); } catch {} ok = true; }
+      } else ok = await sha256(u + ':' + p) === AUTH_HASH;
+      if (ok) { setAuthed(true); route(); return; }
       err.textContent = 'Incorrect user or password';
       document.getElementById('lp').value = ''; document.getElementById('lp').focus();
-    } catch { err.textContent = 'Sign-in needs a secure (https) page'; }
+    } catch (x) { err.textContent = usingSb() ? x.message : 'Sign-in needs a secure (https) page'; }
+    finally { btn.disabled = false; }
   });
 }
 
@@ -503,4 +515,10 @@ async function searchView(tab) {
   }
 }
 
-route();
+// on load: if a saved session is no longer valid in the database, ask for sign-in again
+(async () => {
+  if (isAuthed() && usingSb()) {
+    try { if (await sbRpc('is_valid_session') === false) return logout(); } catch {}
+  }
+  route();
+})();
