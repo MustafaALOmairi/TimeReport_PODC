@@ -1,10 +1,18 @@
 /* Supabase adapter: implements the same actions as api.php (list, meta, get, save, pams, delete)
    using Supabase's REST API, so the frontend works on static hosting such as GitHub Pages. */
+const sbToken = () => { try { return sessionStorage.getItem('tr_token') || ''; } catch { return ''; } };
+async function sbRpc(name, args = {}) {
+  const res = await sbFetch('rpc/' + name, { method: 'POST', body: args });
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
 async function sbFetch(path, { method = 'GET', body, prefer } = {}) {
   const c = window.TR_CONFIG;
   const headers = { apikey: c.SUPABASE_KEY, 'Content-Type': 'application/json' };
   if (c.SUPABASE_KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + c.SUPABASE_KEY; // legacy JWT keys only
   if (prefer) headers.Prefer = prefer;
+  const tok = sbToken(); if (tok) headers['x-client-info'] = tok; // session token (checked by is_valid_session() in the database)
   let res;
   try {
     res = await fetch(c.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + path,
