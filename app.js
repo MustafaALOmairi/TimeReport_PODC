@@ -116,7 +116,7 @@ const go = h => { location.hash = '#/' + h; };
 /* ---------------- HOME ---------------- */
 function home() {
   $app.innerHTML = `<div class="wrap">
-    <div class="hero">${LOGO}<h1>TIME REPORT</h1><button class="btn sm logout" onclick="logout()">Sign out</button></div>
+    <div class="hero">${LOGO}<h1>TIME REPORT</h1><span class="hero-btns"><button class="btn sm" onclick="logout()">Sign out</button></span></div>
     <div class="cards">
       <button class="card c-green" onclick="go('new')">
         <div class="top"><div class="ic">${ICON.plus}</div><div><h3>New Report</h3><p>Create shift report</p></div></div>
