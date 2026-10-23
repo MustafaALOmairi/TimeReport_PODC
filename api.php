@@ -36,12 +36,13 @@ try {
         $where = []; $p = [];
 
         if (($q = s($_GET['q'] ?? '')) !== '') {
-            $where[] = '(mv LIKE :q OR voy LIKE :q OR berth LIKE :q OR yard_no LIKE :q)';
+            $where[] = '(mv LIKE :q OR voy LIKE :q OR berth LIKE :q OR yard_no LIKE :q' . ($type === 'time' ? ' OR report_type LIKE :q' : '') . ')';
             $p[':q'] = "%$q%";
         }
         if (!empty($_GET['from'])) { $where[] = "$dcol >= :f"; $p[':f'] = $_GET['from']; }
         if (!empty($_GET['to']))   { $where[] = "$dcol <= :t"; $p[':t'] = $_GET['to']; }
         if (!empty($_GET['shift'])) { $where[] = 'shift = :s'; $p[':s'] = $_GET['shift']; }
+        if (!empty($_GET['rtype']) && $type === 'time') { $where[] = 'report_type = :rt'; $p[':rt'] = $_GET['rtype']; }
         if (!empty($_GET['yard']))  { $where[] = 'yard_no = :y'; $p[':y'] = $_GET['yard']; }
         if (!empty($_GET['berth'])) { $where[] = 'berth = :b'; $p[':b'] = $_GET['berth']; }
 
@@ -94,15 +95,15 @@ try {
             $f = [
                 s($body['mv'] ?? '', 120), s($body['voy'] ?? '', 80), date_or_today($body['date'] ?? ''),
                 s($body['shift'] ?? '', 20), s($body['berth'] ?? '', 40), s($body['bollard'] ?? '', 40),
-                s($body['yard_no'] ?? '', 120), (string)($body['what_we_do'] ?? ''),
+                s($body['yard_no'] ?? '', 120), (string)($body['what_we_do'] ?? ''), s($body['report_type'] ?? '', 60),
             ];
             if ($id) {
-                $pdo->prepare('UPDATE time_reports SET mv=?,voy=?,report_date=?,shift=?,berth=?,bollard=?,yard_no=?,what_we_do=? WHERE id=?')
+                $pdo->prepare('UPDATE time_reports SET mv=?,voy=?,report_date=?,shift=?,berth=?,bollard=?,yard_no=?,what_we_do=?,report_type=? WHERE id=?')
                     ->execute([...$f, $id]);
                 foreach (['work_activities', 'manpower', 'equipment_usage'] as $t)
                     $pdo->prepare("DELETE FROM $t WHERE report_id=?")->execute([$id]);
             } else {
-                $pdo->prepare('INSERT INTO time_reports (mv,voy,report_date,shift,berth,bollard,yard_no,what_we_do) VALUES (?,?,?,?,?,?,?,?)')->execute($f);
+                $pdo->prepare('INSERT INTO time_reports (mv,voy,report_date,shift,berth,bollard,yard_no,what_we_do,report_type) VALUES (?,?,?,?,?,?,?,?,?)')->execute($f);
                 $id = (int)$pdo->lastInsertId();
             }
             $ins = $pdo->prepare('INSERT INTO work_activities (report_id,start_time,end_time,qty,what_we_use,sort_order) VALUES (?,?,?,?,?,?)');

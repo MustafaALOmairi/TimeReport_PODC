@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS time_reports (
   bollard       VARCHAR(40)  NOT NULL DEFAULT '',
   yard_no       VARCHAR(120) NOT NULL DEFAULT '',
   what_we_do    TEXT NULL,                          -- remarks / description
+  report_type   VARCHAR(60)  NOT NULL DEFAULT '',   -- 1-ESR, 2-Cargo Discharge, ...
   pams_done     TINYINT(1)   NOT NULL DEFAULT 0,
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -80,3 +81,6 @@ CREATE TABLE IF NOT EXISTS discharge_items (
   sort_order  SMALLINT NOT NULL DEFAULT 0,
   FOREIGN KEY (list_id) REFERENCES discharge_lists(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Existing database? Add the new column once:
+-- ALTER TABLE time_reports ADD COLUMN report_type VARCHAR(60) NOT NULL DEFAULT '' AFTER what_we_do;

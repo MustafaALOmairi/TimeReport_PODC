@@ -38,12 +38,13 @@ async function sbApi(action, { type = 'time', params = {}, body = null } = {}) {
   if (action === 'list') {
     const qs = new URLSearchParams({ select: '*', order: `${dcol}.desc,id.desc`, limit: '1000' });
     const q = String(params.q || '').replace(/[,()*\\%]/g, ' ').trim();
-    if (q) qs.append('or', `(mv.ilike.*${q}*,voy.ilike.*${q}*,berth.ilike.*${q}*,yard_no.ilike.*${q}*)`);
+    if (q) qs.append('or', `(mv.ilike.*${q}*,voy.ilike.*${q}*,berth.ilike.*${q}*,yard_no.ilike.*${q}*${type === 'time' ? `,report_type.ilike.*${q}*` : ''})`);
     if (params.from) qs.append(dcol, 'gte.' + params.from);
     if (params.to) qs.append(dcol, 'lte.' + params.to);
     if (params.shift) qs.append('shift', 'eq.' + params.shift);
     if (params.yard) qs.append('yard_no', 'eq.' + params.yard);
     if (params.berth) qs.append('berth', 'eq.' + params.berth);
+    if (params.rtype && type === 'time') qs.append('report_type', 'eq.' + params.rtype);
     const rows = await (await sbFetch(`${tbl}?${qs}`)).json();
     return { ok: true, rows: rows.map(r => ({ ...r, the_date: r[dcol] })) };
   }
@@ -81,7 +82,7 @@ async function sbApi(action, { type = 'time', params = {}, body = null } = {}) {
       const mp = {};
       for (const k of ['FOREMAN', 'TALLYMAN', 'DOCKER']) mp[k] = (b.manpower?.[k] || []).map(x => String(x).trim()).filter(Boolean);
       row = {
-        mv: b.mv || '', voy: b.voy || '', report_date: b.date || b.report_date,
+        mv: b.mv || '', voy: b.voy || '', report_type: b.report_type || '', report_date: b.date || b.report_date,
         shift: b.shift || '', berth: b.berth || '', bollard: b.bollard || '', yard_no: b.yard_no || '',
         what_we_do: b.what_we_do || '',
         activities: (b.activities || []).filter(nonEmpty),
