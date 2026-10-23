@@ -47,7 +47,8 @@ const LOGO = `<img src="${LOGO_SRC}" alt="Port of Duqm">`;
 
 /* ---------------- router ---------------- */
 /* standard drop-down suggestions (users can still type any value) */
-const REPORT_TYPES = ['1-ESR', '2-Cargo Discharge', '3-Cargo Load', '4-Housekeeping', '5-Mooring Gang', '6-Unmooring Gang', '8-DE Mob Equipment', '9-Mob Equipment'];
+const REPORT_TYPES = ['ESR', 'Cargo Discharge', 'Cargo Load', 'Housekeeping', 'Mooring Gang', 'Unmooring Gang', 'DE Mob Equipment', 'Mob Equipment'];
+const rtClean = v => String(v || '').replace(/^\s*\d+\s*-\s*/, ''); // old records saved with a number prefix
 const BERTHS = ['110','120','130','140','150','160','170','180','190','FB-200','FB-210','FB-220','ODC'];
 const YARDS = ['Admin Gate','Gate IN','Gate OUT','Port Security','Yard-DB','Yard-BB','Yard-RORO','Yard-CT','Yard-CFS','Yard-Navy','Washing Area','Wood yard','Warehouse'];
 const DL_BERTH = `<datalist id="berthList">${BERTHS.map(v => `<option value="${v}">`).join('')}</datalist>`;
@@ -238,7 +239,7 @@ function renderTime(ro) {
   $app.innerHTML = `<div class="wrap ${ro ? 'readonly' : ''}">
     ${backBtn()}
     <div class="sheet" id="sheet">
-      <div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT<select class="inp title-type" id="rtype" aria-label="Report type"><option value="">Select Type</option>${REPORT_TYPES.map(v => `<option ${t.report_type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT<select class="inp title-type" id="rtype" aria-label="Report type"><option value="">Select Type</option>${REPORT_TYPES.map(v => `<option ${rtClean(t.report_type) === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       <div class="gap" style="height:0"></div>
       <table class="t" style="margin-top:0">
         <tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
@@ -376,7 +377,7 @@ function staticTimeSheet(r) {
   if (!eqs.length) eqs.push({});
   const mp = r.manpower || {};
   const people = k => `<td class="vtop"><div class="chips">${(mp[k] || []).filter(Boolean).map(b => `<span>${esc(b)}</span>`).join('') || '&nbsp;'}</div></td>`;
-  return `<div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT${r.report_type ? `<span class="title-type tt-static">${esc(r.report_type)}</span>` : ''}</div>
+  return `<div class="title"><img class="title-logo" src="${LOGO_SRC}" alt="">TIME REPORT${r.report_type ? `<span class="title-type tt-static">${esc(rtClean(r.report_type))}</span>` : ''}</div>
     <table class="t"><tr><th>MV</th><th>VOY</th><th>Date</th><th>Shift</th></tr>
       <tr><td>${vcell(r.mv)}</td><td>${vcell(r.voy)}</td><td>${vcell(fmtDate(r.report_date))}</td><td>${vcell(r.shift)}</td></tr></table>
     <table class="t" style="margin-top:-1px"><colgroup><col style="width:25%"><col style="width:25%"><col style="width:50%"></colgroup>
@@ -494,7 +495,7 @@ async function searchView(tab) {
       document.getElementById('cnt').textContent = `(${rows.length} results)`;
       tb.innerHTML = rows.length ? rows.map(r => `<tr>
         <td class="${can('export') ? '' : 'perm-hide'}"><input type="checkbox" class="chk" data-sel="${r.id}" ${S.sel.has(String(r.id)) ? 'checked' : ''}></td>
-        <td>${fmtDate(r.the_date)}</td><td><b>${esc(r.mv)}</b></td><td>${esc(r.voy)}</td>${tab === 'time' ? `<td>${esc(r.report_type) || '-'}</td>` : ''}
+        <td>${fmtDate(r.the_date)}</td><td><b>${esc(r.mv)}</b></td><td>${esc(r.voy)}</td>${tab === 'time' ? `<td>${esc(rtClean(r.report_type)) || '-'}</td>` : ''}
         <td>${r.shift ? `<span class="pill ${r.shift === 'Day' ? 'day' : ''}">${esc(r.shift)}</span>` : '-'}</td>
         <td class="berth">${esc(r.berth) || '-'}</td><td>${esc(r.yard_no) || '-'}</td>
         <td><div class="acts">
