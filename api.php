@@ -96,14 +96,15 @@ try {
                 s($body['mv'] ?? '', 120), s($body['voy'] ?? '', 80), date_or_today($body['date'] ?? ''),
                 s($body['shift'] ?? '', 20), s($body['berth'] ?? '', 40), s($body['bollard'] ?? '', 40),
                 s($body['yard_no'] ?? '', 120), (string)($body['what_we_do'] ?? ''), s($body['report_type'] ?? '', 60),
+                s($body['sign_name'] ?? '', 120), (string)($body['signature'] ?? ''), s($body['created_by'] ?? '', 120), s($body['created_by_user'] ?? '', 60),
             ];
             if ($id) {
-                $pdo->prepare('UPDATE time_reports SET mv=?,voy=?,report_date=?,shift=?,berth=?,bollard=?,yard_no=?,what_we_do=?,report_type=? WHERE id=?')
+                $pdo->prepare('UPDATE time_reports SET mv=?,voy=?,report_date=?,shift=?,berth=?,bollard=?,yard_no=?,what_we_do=?,report_type=?,sign_name=?,signature=?,created_by=?,created_by_user=? WHERE id=?')
                     ->execute([...$f, $id]);
                 foreach (['work_activities', 'manpower', 'equipment_usage'] as $t)
                     $pdo->prepare("DELETE FROM $t WHERE report_id=?")->execute([$id]);
             } else {
-                $pdo->prepare('INSERT INTO time_reports (mv,voy,report_date,shift,berth,bollard,yard_no,what_we_do,report_type) VALUES (?,?,?,?,?,?,?,?,?)')->execute($f);
+                $pdo->prepare('INSERT INTO time_reports (mv,voy,report_date,shift,berth,bollard,yard_no,what_we_do,report_type,sign_name,signature,created_by,created_by_user) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute($f);
                 $id = (int)$pdo->lastInsertId();
             }
             $ins = $pdo->prepare('INSERT INTO work_activities (report_id,start_time,end_time,qty,what_we_use,sort_order) VALUES (?,?,?,?,?,?)');

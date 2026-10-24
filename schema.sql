@@ -13,7 +13,11 @@ CREATE TABLE IF NOT EXISTS time_reports (
   bollard       VARCHAR(40)  NOT NULL DEFAULT '',
   yard_no       VARCHAR(120) NOT NULL DEFAULT '',
   what_we_do    TEXT NULL,                          -- remarks / description
-  report_type   VARCHAR(60)  NOT NULL DEFAULT '',   -- 1-ESR, 2-Cargo Discharge, ...
+  report_type   VARCHAR(60)  NOT NULL DEFAULT '',   -- ESR, Cargo Discharge, ...
+  sign_name     VARCHAR(120) NOT NULL DEFAULT '',   -- name typed above the signature
+  signature     MEDIUMTEXT NULL,                    -- signature image (PNG data URL)
+  created_by    VARCHAR(120) NOT NULL DEFAULT '',   -- logged-in user's name
+  created_by_user VARCHAR(60) NOT NULL DEFAULT '',  -- logged-in user ID
   pams_done     TINYINT(1)   NOT NULL DEFAULT 0,
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -84,3 +88,4 @@ CREATE TABLE IF NOT EXISTS discharge_items (
 
 -- Existing database? Add the new column once:
 -- ALTER TABLE time_reports ADD COLUMN report_type VARCHAR(60) NOT NULL DEFAULT '' AFTER what_we_do;
+-- Existing database? ALTER TABLE time_reports ADD COLUMN sign_name VARCHAR(120) NOT NULL DEFAULT '', ADD COLUMN signature MEDIUMTEXT NULL, ADD COLUMN created_by VARCHAR(120) NOT NULL DEFAULT '', ADD COLUMN created_by_user VARCHAR(60) NOT NULL DEFAULT '';

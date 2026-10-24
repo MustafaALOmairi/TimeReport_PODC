@@ -71,7 +71,7 @@ async function sha256(s) {
 const usingSb = () => !!(window.TR_CONFIG && window.TR_CONFIG.SUPABASE_URL && window.TR_CONFIG.SUPABASE_KEY);
 async function logout() {
   try { if (usingSb()) await sbRpc('logout'); } catch {}
-  try { sessionStorage.removeItem('tr_token'); sessionStorage.removeItem('tr_name'); } catch {}
+  try { sessionStorage.removeItem('tr_token'); sessionStorage.removeItem('tr_name'); sessionStorage.removeItem('tr_user'); } catch {}
   setPerms(null);
   setAuthed(false); location.hash = '#/'; route();
 }
@@ -98,9 +98,9 @@ function loginView() {
       let ok = false;
       if (usingSb()) { // users are managed in the database (users.sql)
         const r = await sbRpc('login', { p_user: u, p_pass: p });
-        if (r && r.ok) { try { sessionStorage.setItem('tr_token', r.token); sessionStorage.setItem('tr_name', r.name || u); } catch {} setPerms(r.perms); ok = true; }
+        if (r && r.ok) { try { sessionStorage.setItem('tr_token', r.token); sessionStorage.setItem('tr_name', r.name || u); sessionStorage.setItem('tr_user', u); } catch {} setPerms(r.perms); ok = true; }
       } else ok = await sha256(u + ':' + p) === AUTH_HASH;
-      if (ok) { setAuthed(true); route(); return; }
+      if (ok) { if (!usingSb()) { try { sessionStorage.setItem('tr_user', u); sessionStorage.setItem('tr_name', u); } catch {} } setAuthed(true); route(); return; }
       err.textContent = 'Incorrect user or password';
       document.getElementById('lp').value = ''; document.getElementById('lp').focus();
     } catch (x) { err.textContent = usingSb() ? x.message : 'Sign-in needs a secure (https) page'; }
@@ -201,9 +201,47 @@ const fname = (p, mv, d) => `${p}_${(mv || 'vessel').replace(/\W+/g, '_')}_${d |
 /* ---------------- TIME REPORT FORM ---------------- */
 let T = null; // current time-report state
 
+const sessionUser = () => { try { return { name: sessionStorage.getItem('tr_name') || '', user: sessionStorage.getItem('tr_user') || '' }; } catch { return { name: '', user: '' }; } };
+
+/* bottom of the report: logged-in user (left) + name & signature (right) */
+function signBlock(r, ro) {
+  return `<div class="sign-row">
+    <div class="sign-left"><div><span>Name:</span> <b>${esc(r.created_by) || '-'}</b></div><div><span>User:</span> <b>${esc(r.created_by_user) || '-'}</b></div></div>
+    <div class="sign-right"><div class="sign-name"><span>Name:</span><input class="inp" id="signname" value="${esc(r.sign_name)}" ${ro ? 'disabled' : ''}></div>
+      <div class="sign-box ${ro ? '' : 'can'}" id="signbox" role="button" ${ro ? '' : 'tabindex="0" title="Click to sign"'}>${r.signature ? `<img src="${r.signature}" alt="Signature">` : (ro ? '' : '<em class="xh">Click to sign</em>')}</div></div>
+  </div>`;
+}
+function signStatic(r) {
+  return `<div class="sign-row"><div class="sign-left"><div><span>Name:</span> <b>${esc(r.created_by) || '-'}</b></div><div><span>User:</span> <b>${esc(r.created_by_user) || '-'}</b></div></div>
+    <div class="sign-right"><div class="sign-name"><span>Name:</span><div class="flat">${esc(r.sign_name)}</div></div><div class="sign-box">${r.signature ? `<img src="${r.signature}" alt="Signature">` : ''}</div></div></div>`;
+}
+function signaturePad(current) {
+  return new Promise(res => {
+    const d = document.createElement('div'); d.className = 'sigmodal noprint';
+    d.innerHTML = `<div class="sigdlg"><h3>Signature</h3><canvas width="560" height="220"></canvas>
+      <div class="sigbtn"><button class="btn gray" data-a="clear">Clear</button><button class="btn gray" data-a="cancel">Cancel</button><button class="btn green" data-a="ok">Save signature</button></div></div>`;
+    document.body.appendChild(d);
+    const c = d.querySelector('canvas'), x = c.getContext('2d');
+    x.lineWidth = 2.6; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#111';
+    let down = false, dirty = false;
+    if (current) { const im = new Image(); im.onload = () => { x.drawImage(im, 0, 0, c.width, c.height); dirty = true; }; im.src = current; }
+    const pt = e => { const b = c.getBoundingClientRect(); return [(e.clientX - b.left) * c.width / b.width, (e.clientY - b.top) * c.height / b.height]; };
+    c.onpointerdown = e => { down = true; dirty = true; c.setPointerCapture(e.pointerId); const [a, b] = pt(e); x.beginPath(); x.moveTo(a, b); x.lineTo(a + .1, b + .1); x.stroke(); e.preventDefault(); };
+    c.onpointermove = e => { if (!down) return; const [a, b] = pt(e); x.lineTo(a, b); x.stroke(); };
+    c.onpointerup = c.onpointercancel = () => { down = false; };
+    d.onclick = e => {
+      const a = e.target.dataset?.a; if (!a) { if (e.target === d) { d.remove(); res(null); } return; }
+      if (a === 'clear') { x.clearRect(0, 0, c.width, c.height); dirty = false; }
+      else if (a === 'cancel') { d.remove(); res(null); }
+      else { const out = dirty ? c.toDataURL('image/png') : ''; d.remove(); res(out); }
+    };
+  });
+}
+
 function blankTime() {
   return {
     id: 0, mv: '', voy: '', report_type: '', report_date: today(), shift: '', berth: '', bollard: '', yard_no: '', what_we_do: '',
+    sign_name: '', signature: '', created_by: '', created_by_user: '',
     activities: [{}, {}], equipment: [{}, {}],
     manpower: { FOREMAN: ['', ''], TALLYMAN: ['', ''], DOCKER: ['', ''] },
   };
@@ -221,12 +259,14 @@ async function formTime(id, ro) {
       if (!T.equipment.length) T.equipment = [{}];
     }
   } catch (e) { toast(e.message, true); return home(); }
+  if (!T.created_by_user) { const me = sessionUser(); T.created_by = me.name; T.created_by_user = me.user; } // logged-in account, filled automatically
   renderTime(ro);
 }
 
 function pullTime() { // read DOM -> state
   const g = id => document.getElementById(id)?.value ?? '';
   T.mv = g('mv'); T.voy = g('voy'); T.report_type = g('rtype'); T.report_date = g('date') || today(); T.shift = g('shift');
+  T.sign_name = document.getElementById('signname') ? g('signname') : T.sign_name;
   T.berth = g('berth'); T.bollard = g('bollard'); T.yard_no = g('yard'); T.what_we_do = g('what');
   T.activities = [...document.querySelectorAll('#acts tr[data-i]')].map(tr => ({
     start_time: tr.querySelector('.s').value, end_time: tr.querySelector('.e').value,
@@ -301,6 +341,7 @@ function renderTime(ro) {
           <tr><th>Equipment</th><th>Operator 1</th><th>Start</th><th>End</th><th class="xh">Actions</th></tr>${eqRows}</table>
         <div class="xh" style="padding:5px"><button class="add" id="addEq">+ Add Equipment</button></div>
       </div>
+      ${signBlock(t, ro)}
     </div>
     <div class="actions noprint">
       ${ro ? (can('edit') ? `<button class="btn orange" onclick="go('time/${t.id}')">${ICON.edit} Edit</button>` : '') : `<button class="btn green" id="save">${ICON.save} Save Report</button>`}
@@ -312,6 +353,11 @@ function renderTime(ro) {
   if (ro) { $app.querySelectorAll('input,select,textarea').forEach(e => e.disabled = true); }
   const rerender = () => { pullTime(); renderTime(ro); };
   const $ = s => document.querySelector(s);
+  $('#signbox')?.addEventListener('click', async () => {
+    if (ro) return; pullTime();
+    const out = await signaturePad(T.signature); if (out === null) return;
+    T.signature = out; renderTime(ro);
+  });
   $('#addAct')?.addEventListener('click', () => { pullTime(); T.activities.push({}); renderTime(ro); });
   $('#addEq')?.addEventListener('click', () => { pullTime(); T.equipment.push({}); renderTime(ro); });
   document.querySelectorAll('[data-del-act]').forEach(b => b.onclick = () => { pullTime(); T.activities.splice(+b.dataset.delAct, 1); if (!T.activities.length) T.activities.push({}); renderTime(ro); });
@@ -425,7 +471,8 @@ function staticTimeSheet(r) {
     <div class="gap"></div>
     <table class="t"><colgroup><col style="width:30%"><col style="width:30%"><col style="width:20%"><col style="width:20%"></colgroup>
       <tr><th>Equipment</th><th>Operator 1</th><th>Start</th><th>End</th></tr>
-      ${eqs.map(e => `<tr><td>${vcell(e.equipment)}</td><td>${vcell(e.operator)}</td><td>${vcell(hhmm(e.start_time))}</td><td>${vcell(hhmm(e.end_time))}</td></tr>`).join('')}</table>`;
+      ${eqs.map(e => `<tr><td>${vcell(e.equipment)}</td><td>${vcell(e.operator)}</td><td>${vcell(hhmm(e.start_time))}</td><td>${vcell(hhmm(e.end_time))}</td></tr>`).join('')}</table>
+    ${signStatic(r)}`;
 }
 
 function staticDischargeSheet(r) {

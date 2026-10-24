@@ -85,6 +85,7 @@ async function sbApi(action, { type = 'time', params = {}, body = null } = {}) {
         mv: b.mv || '', voy: b.voy || '', report_type: b.report_type || '', report_date: b.date || b.report_date,
         shift: b.shift || '', berth: b.berth || '', bollard: b.bollard || '', yard_no: b.yard_no || '',
         what_we_do: b.what_we_do || '',
+        sign_name: b.sign_name || '', signature: b.signature || '', created_by: b.created_by || '', created_by_user: b.created_by_user || '',
         activities: (b.activities || []).filter(nonEmpty),
         manpower: mp,
         equipment: (b.equipment || []).filter(nonEmpty),

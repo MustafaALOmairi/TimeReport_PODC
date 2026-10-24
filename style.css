@@ -167,3 +167,22 @@ table.r td .acts{display:flex;gap:6px;flex-wrap:wrap}
 .sheet .title .flat-type{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:auto;max-width:200px;font:600 13px 'Inter',sans-serif;letter-spacing:0;padding:4px 10px;text-align:right}
 @media print{select.inp{appearance:none!important;-webkit-appearance:none!important;background-image:none!important}}
 @media print{input::-webkit-calendar-picker-indicator{display:none!important}}
+
+/* bottom of report: creator (left) + name & signature (right) */
+.sign-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:16px;padding:0 8px 8px}
+.sign-left{font-size:13px;line-height:1.7}
+.sign-left span,.sign-name span{font-weight:700;margin-right:4px}
+.sign-right{display:flex;flex-direction:column;align-items:stretch;width:240px}
+.sign-name{display:flex;align-items:center;gap:4px;font-size:13px;margin-bottom:6px}
+.sign-name .inp,.sign-name .flat{flex:1;min-width:0;font-size:13px}
+.sign-box{height:90px;border:1px solid #6b7280;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
+.sign-box.can{cursor:pointer;border-style:dashed}.sign-box.can:hover{background:#fff7ed}
+.sign-box img{max-width:100%;max-height:100%;object-fit:contain}
+.sign-box em{color:#9ca3af;font-size:12px}
+@media print{.sign-box,.sign-box.can{border-style:solid}}
+@media (max-width:560px){.sign-row{flex-direction:column;align-items:stretch}.sign-right{width:100%}}
+.sigmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:12px}
+.sigdlg{background:#fff;border-radius:12px;padding:16px;width:min(600px,100%)}
+.sigdlg h3{margin:0 0 10px}
+.sigdlg canvas{width:100%;height:auto;aspect-ratio:560/220;border:1px dashed #9ca3af;border-radius:8px;touch-action:none;background:#fff;cursor:crosshair;display:block}
+.sigbtn{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
