@@ -609,6 +609,7 @@ async function searchView(tab) {
       const me = await sbRpc('whoami');
       if (me && me.ok === false) return logout();
       if (me && me.ok) setPerms(me.perms || null);   // pick up changes made by the admin
+      if (me && me.ok) { try { if (me.username) sessionStorage.setItem('tr_user', me.username); if (me.name) sessionStorage.setItem('tr_name', me.name); } catch {} }
     } catch {}
   }
   route();
