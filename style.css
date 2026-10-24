@@ -160,3 +160,10 @@ table.r td .acts{display:flex;gap:6px;flex-wrap:wrap}
 .perm-hide{display:none!important}
 .card:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
 .card:disabled:hover{transform:none;box-shadow:0 4px 10px rgba(0,0,0,.06)}
+
+/* flattened (read-only) text used for print / PDF / image so long text wraps and nothing is clipped */
+.flat{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;padding:3px 4px;min-height:1.3em;line-height:1.35;box-sizing:border-box}
+.person .flat{display:flex;align-items:center;justify-content:center;text-align:center;min-height:36px}
+.sheet .title .flat-type{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:auto;max-width:200px;font:600 13px 'Inter',sans-serif;letter-spacing:0;padding:4px 10px;text-align:right}
+@media print{select.inp{appearance:none!important;-webkit-appearance:none!important;background-image:none!important}}
+@media print{input::-webkit-calendar-picker-indicator{display:none!important}}

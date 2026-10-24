@@ -148,7 +148,37 @@ function shiftSelect(v) {
 }
 
 /* hide editing controls (.xh) in exported image / PDF */
-const hideForExport = d => d.querySelectorAll(".xh").forEach(e => e.style.setProperty("display", "none", "important"));
+/* Replace text inputs / selects / textareas by plain wrapping text, so nothing is cut off and no dropdown arrows show.
+   Returns an undo() function (used for printing on the live page; exports work on a throw-away clone). */
+function flattenControls(root, source) {
+  const made = [];
+  const live = source ? [...source.querySelectorAll('input, select, textarea')] : null;
+  root.querySelectorAll('input, select, textarea').forEach((el0, idx) => {
+    const el = el0, src = live ? live[idx] : el0; // exports work on a clone: read values from the live form
+    const ty = (el.type || '').toLowerCase();
+    if (['checkbox', 'radio', 'hidden', 'time', 'date', 'button'].includes(ty)) return;
+    if (el.closest('.xh')) return;
+    const cs = (root.ownerDocument.defaultView || window).getComputedStyle(el);
+    const v = src.tagName === 'SELECT' ? (src.value ? src.options[src.selectedIndex].text : '') : src.value;
+    const f = root.ownerDocument.createElement('div');
+    f.className = 'flat';
+    f.textContent = v;
+    Object.assign(f.style, { fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontFamily: cs.fontFamily, textAlign: cs.textAlign, color: cs.color, letterSpacing: cs.letterSpacing });
+    if (el.closest('.person')) f.style.flex = '1';
+    if (el.classList.contains('title-type')) { f.classList.add('flat-type'); if (!v) f.style.display = 'none'; }
+    el.parentNode.insertBefore(f, el);
+    made.push([el, f, el.style.display]);
+    el.style.setProperty('display', 'none', 'important');
+  });
+  return () => made.forEach(([el, f, d]) => { f.remove(); el.style.display = d; });
+}
+const hideForExport = d => {
+  d.querySelectorAll(".xh").forEach(e => e.style.setProperty("display", "none", "important"));
+  flattenControls(d.getElementById('sheet') || d.body, document.getElementById('sheet'));
+};
+let _unflat = null;
+window.addEventListener('beforeprint', () => { const sh = document.getElementById('sheet'); if (sh && !_unflat) _unflat = flattenControls(sh); });
+window.addEventListener('afterprint', () => { if (_unflat) { _unflat(); _unflat = null; } });
 
 async function exportImage(name) {
   const el = document.getElementById('sheet');
